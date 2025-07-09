@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8" />
+    <title>Dashboard - POWER MS Trading Pro</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            background: #111;
+            color: white;
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        canvas {
+            background: #222;
+            border: 1px solid #444;
+            margin-bottom: 30px;
+        }
+        .log-box {
+            background: #222;
+            border: 1px solid #444;
+            padding: 10px;
+            max-height: 300px;
+            overflow-y: scroll;
+        }
+    </style>
+</head>
+<body>
+    <h1>Dashboard</h1>
+
+    <h2>Graphique RSI (Dynamique)</h2>
+    <canvas id="rsiChart" width="600" height="300"></canvas>
+
+    <h2>Logs des Opérations (Temps réel)</h2>
+    <div class="log-box" id="logBox">Chargement...</div>
+
+    <script>
+        const apiBase = "http://localhost:8000";
+
+        async function loadLogs() {
+            const res = await fetch(`${apiBase}/logs/trades`);
+            const logs = await res.json();
+            const box = document.getElementById("logBox");
+            box.innerHTML = "";
+            logs.forEach(log => {
+                const p = document.createElement("p");
+                p.textContent = `[${log.timestamp}] [${log.side.toUpperCase()}] ${log.pair} (${log.quantity})`;
+                box.appendChild(p);
+            });
+        }
+
+        async function loadRSIChart() {
+            const res = await fetch(`${apiBase}/strategy/ai_signal`, {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({"prices": Array.from({length: 50}, (_, i) => ({close: Math.random() * 100 + 100}))})
+            });
+            const result = await res.json();
+            const rsi = result.rsi.toFixed(2);
+            const signal = result.signal;
+            const ctx = document.getElementById('rsiChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: Array.from({length: 50}, (_, i) => i + 1),
+                    datasets: [{
+                        label: `RSI (Dernier: ${rsi}, Signal: ${signal.toUpperCase()})`,
+                        data: Array(50).fill().map(() => Math.floor(Math.random() * 70 + 10)),
+                        borderColor: 'gold',
+                        borderWidth: 2,
+                        fill: false,
+                        tension: 0.1
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: {
+                            min: 0,
+                            max: 100
+                        }
+                    }
+                }
+            });
+        }
+
+        loadLogs();
+        loadRSIChart();
+    </script>
+</body>
+</html>

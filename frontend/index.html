@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>POWER MS Trading Pro</title>
+    <style>
+        body {
+            background: #121212;
+            color: gold;
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        input, select, button {
+            padding: 10px;
+            margin: 5px 0;
+            background: #222;
+            border: none;
+            color: gold;
+            font-size: 16px;
+        }
+        button {
+            cursor: pointer;
+            background: gold;
+            color: black;
+            font-weight: bold;
+        }
+        .section {
+            margin-bottom: 20px;
+            border-bottom: 1px solid gold;
+            padding-bottom: 10px;
+        }
+        #notifications {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            max-width: 300px;
+        }
+        .notification {
+            background: #333;
+            border: 1px solid gold;
+            padding: 10px;
+            margin-bottom: 5px;
+            border-radius: 5px;
+            color: gold;
+        }
+    </style>
+</head>
+<body>
+    <h1>Bienvenue à POWER MS Trading Pro</h1>
+
+    <div class="section">
+        <h2>Clés API Binance</h2>
+        <input id="apiKey" type="text" placeholder="API Key" />
+        <input id="apiSecret" type="text" placeholder="API Secret" />
+        <button onclick="saveApi()">Enregistrer API</button>
+    </div>
+
+    <div class="section">
+        <h2>Paramètres du Bot</h2>
+        <label>Pourcentage de profit (5-40%):</label><br />
+        <input id="profitPercent" type="number" min="5" max="40" value="5" /><br />
+        <label>Stop Loss (%):</label><br />
+        <input id="stopLoss" type="number" min="1" max="50" value="5" /><br />
+        <label>Stratégie:</label><br />
+        <select id="strategySelect">
+            <option value="RSI">RSI</option>
+            <option value="MACD">MACD</option>
+            <option value="AI">AI</option>
+        </select><br />
+        <label>Marché:</label><br />
+        <select id="marketSelect">
+            <option value="all">Tous les Pairs</option>
+            <option value="solo">Solo</option>
+        </select><br />
+        <button onclick="updateConfig()">Mettre à jour</button>
+    </div>
+
+    <div class="section">
+        <h2>Trading</h2>
+        <label>Pair:</label><br />
+        <input id="tradePair" type="text" placeholder="Ex: BTCUSDT" /><br />
+        <label>Quantité:</label><br />
+        <input id="tradeQty" type="number" step="0.0001" /><br />
+        <button onclick="buy()">Acheter</button>
+        <button onclick="sell()">Vendre</button>
+    </div>
+
+    <div class="section">
+        <h2>إشارات RSI الأخيرة <button onclick="checkRecentRSISignals()">تحديث</button></h2>
+        <div id="rsiSignals" style="margin-top: 10px;">
+            <p>جاري تحميل إشارات RSI...</p>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>Notifications</h2>
+        <div id="notifications"></div>
+    </div>
+
+    <script>
+        const apiBase = "http://localhost:8000";
+
+        function notify(msg) {
+            const container = document.getElementById("notifications");
+            const div = document.createElement("div");
+            div.className = "notification";
+            div.textContent = msg;
+            container.appendChild(div);
+            setTimeout(() => div.remove(), 5000);
+        }
+
+        async function saveApi() {
+            const apiKey = document.getElementById("apiKey").value;
+            const apiSecret = document.getElementById("apiSecret").value;
+            const res = await fetch(`${apiBase}/settings/save_api?api_key=${apiKey}&api_secret=${apiSecret}`, {
+                method: "POST"
+            });
+            const data = await res.json();
+            notify(data.message || "Erreur");
+        }
+
+        async function updateConfig() {
+            const profit = parseFloat(document.getElementById("profitPercent").value);
+            const stop = parseFloat(document.getElementById("stopLoss").value);
+            const strategy = document.getElementById("strategySelect").value;
+            const market = document.getElementById("marketSelect").value;
+            const res = await fetch(`${apiBase}/settings/update_config?profit_percent=${profit}&stop_loss_percent=${stop}&strategy=${strategy}&market=${market}`, {
+                method: "POST"
+            });
+            const data = await res.json();
+            notify(data.message || "Erreur");
+        }
+
+        async function buy() {
+            const pair = document.getElementById("tradePair").value;
+            const qty = parseFloat(document.getElementById("tradeQty").value);
+            const res = await fetch(`${apiBase}/trade/buy?pair=${pair}&quantity=${qty}`, {
+                method: "POST"
+            });
+            const data = await res.json();
+            notify(data.message || "Erreur");
+        }
+
+        async function sell() {
+            const pair = document.getElementById("tradePair").value;
+            const qty = parseFloat(document.getElementById("tradeQty").value);
+            const res = await fetch(`${apiBase}/trade/sell?pair=${pair}&quantity=${qty}`, {
+                method: "POST"
+            });
+            const data = await res.json();
+            notify(data.message || "Erreur");
+        }
+
+        // وظائف إضافية لتحليل إشارات RSI
+        function formatRSISignal(signal) {
+            const signalType = signal.type === 'buy' ? '🟢 شراء' : '🔴 بيع';
+            return `
+                <div style="margin: 10px 0; padding: 10px; background: #1a1a1a; border-radius: 5px;">
+                    <strong>${signal.pair}</strong>: ${signalType}<br>
+                    <small>${signal.time} (UTC)</small>
+                </div>
+            `;
+        }
+
+        async function checkRecentRSISignals() {
+            const rsiContainer = document.getElementById('rsiSignals');
+            rsiContainer.innerHTML = '<p>جاري تحميل إشارات RSI...</p>';
+            
+            try {
+                const response = await fetch(`${apiBase}/webhook/recent_rsi_signals`);
+                const signals = await response.json();
+                
+                if (signals.length === 0) {
+                    rsiContainer.innerHTML = '<p>لا توجد إشارات RSI في آخر 15 دقيقة</p>';
+                    return;
+                }
+                
+                let html = '<div style="max-height: 300px; overflow-y: auto;">';
+                signals.forEach(signal => {
+                    html += formatRSISignal(signal);
+                });
+                html += '</div>';
+                
+                rsiContainer.innerHTML = html;
+                
+            } catch (error) {
+                console.error('خطأ في جلب إشارات RSI:', error);
+                rsiContainer.innerHTML = '<p style="color: red;">حدث خطأ أثناء تحميل إشارات RSI</p>';
+            }
+        }
+
+        // تحميل إشارات RSI عند فتح الصفحة
+        document.addEventListener('DOMContentLoaded', function() {
+            checkRecentRSISignals();
+            // تحديث إشارات RSI كل دقيقة
+            setInterval(checkRecentRSISignals, 60000);
+        });
+    </script>
+</body>
+</html>
