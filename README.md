@@ -1,4 +1,4 @@
-# POWER MS Trading Pro
+# crypto-signal-trader
 
 منصة تداول آلية متكاملة مع واجهة ويب سهلة الاستخدام.
 
@@ -20,8 +20,8 @@
 
 1. استنسخ المستودع:
 ```bash
-git clone https://github.com/yourusername/power-ms-trading-pro-full.git
-cd power-ms-trading-pro-full
+git clone https://github.com/USDTERC20BOSS/crypto-signal-trader.git
+cd crypto-signal-trader
 ```
 
 2. قم بتثبيت متطلبات Python:
@@ -38,7 +38,3 @@ uvicorn main:app --reload
 ```
 http://localhost:8000
 ```
-
-## الترخيص
-
-هذا المشروع مرخص تحت [MIT License](LICENSE).
