@@ -3,12 +3,10 @@
   publish = "dist"
   command = "npm install && npm run build"
 
-[context.production]
-  environment = {
-    NODE_ENV = "production",
-    NODE_VERSION = "18",
-    VITE_API_URL = "https://crypto-signal-trader.onrender.com"
-  }
+[context.production.environment]
+  NODE_ENV = "production"
+  NODE_VERSION = "18"
+  VITE_API_URL = "https://crypto-signal-trader.onrender.com"
 
 [context.production.deploy-redirects]
   from = "/*"
