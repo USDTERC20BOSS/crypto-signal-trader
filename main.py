@@ -1,8 +1,26 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from dotenv import load_dotenv
+import os
 from routes import auth, settings, trading, pairs, status, signals, strategy, logs, webhook
 
 app = FastAPI(title="POWER MS Trading Pro Backend")
+
+# تحميل المتغيرات البيئية
+load_dotenv()
+
+# تهيئة Binance API
+Binance_API_KEY = os.getenv('BINANCE_API_KEY')
+Binance_API_SECRET = os.getenv('BINANCE_API_SECRET')
+
+# إضافة middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 app.add_middleware(
     CORSMiddleware,
