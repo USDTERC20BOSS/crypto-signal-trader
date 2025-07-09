@@ -495,8 +495,10 @@
     </div>
 
     <script>
-        let apiKey = localStorage.getItem('binance_api_key');
-        let apiSecret = localStorage.getItem('binance_api_secret');
+        // Variables globales
+        const apiUrl = 'https://votre-api-render.com'; // استبدل هذا برابط API الخاص بك
+        let apiKey = localStorage.getItem('binance_api_key') || '';
+        let apiSecret = localStorage.getItem('binance_api_secret') || '';
         let config = {
             profitPercent: localStorage.getItem('profit_percent') || 5,
             stopLoss: localStorage.getItem('stop_loss') || 2,
