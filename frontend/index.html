@@ -23,6 +23,8 @@
         button {
             background: #4CAF50;
             cursor: pointer;
+            padding: 12px;
+            font-size: 16px;
         }
         button:hover {
             background: #45a049;
@@ -36,6 +38,35 @@
         h1, h2 {
             color: gold;
             margin: 10px 0;
+        }
+        .bot-settings {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+            margin: 15px 0;
+        }
+        .setting-group {
+            background: #333;
+            padding: 15px;
+            border-radius: 5px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .setting-group label {
+            font-size: 14px;
+            color: #fff;
+        }
+        .apply-settings {
+            grid-column: 1 / -1;
+            background: #2196F3;
+            color: white;
+            font-weight: bold;
+            padding: 15px;
+            margin-top: 15px;
+        }
+        .apply-settings:hover {
+            background: #1976D2;
         }
         .rsi-signals {
             max-height: 300px;
@@ -67,13 +98,55 @@
 
     <div class="section">
         <h2>Paramètres du Bot</h2>
-        <label>Pourcentage de profit (5-40%):</label><br />
-        <input id="profitPercent" type="number" min="5" max="40" value="5" /><br />
-        <label>Stop Loss (%):</label><br />
-        <input id="stopLoss" type="number" min="0" max="100" value="2" /><br />
-        <label>Quantité minimum:</label><br />
-        <input id="minQuantity" type="number" min="0.001" value="0.001" step="0.001" /><br />
-        <button onclick="updateConfig()">Enregistrer Configuration</button>
+        <div class="bot-settings">
+            <div class="setting-group">
+                <label>Pourcentage de profit (5-40%):</label>
+                <input id="profitPercent" type="number" min="5" max="40" value="5" />
+            </div>
+            <div class="setting-group">
+                <label>Stop Loss (%):</label>
+                <input id="stopLoss" type="number" min="0" max="100" value="2" />
+            </div>
+            <div class="setting-group">
+                <label>Quantité minimum:</label>
+                <input id="minQuantity" type="number" min="0.001" value="0.001" step="0.001" />
+            </div>
+            <div class="setting-group">
+                <label>Stratégie:</label>
+                <select id="strategySelect">
+                    <option value="RSI">RSI</option>
+                    <option value="MACD">MACD</option>
+                    <option value="AI">AI</option>
+                </select>
+            </div>
+            <div class="setting-group">
+                <label>Marché:</label>
+                <select id="marketSelect">
+                    <option value="all">Tous les Pairs</option>
+                    <option value="solo">Solo</option>
+                </select>
+            </div>
+            <div class="setting-group">
+                <label>Temps de trading (minutes):</label>
+                <input id="tradeTime" type="number" min="1" value="5" />
+            </div>
+            <div class="setting-group">
+                <label>Take Profit (%):</label>
+                <input id="takeProfit" type="number" min="0" value="10" />
+            </div>
+            <div class="setting-group">
+                <label>Maximum trades simultanés:</label>
+                <input id="maxTrades" type="number" min="1" value="3" />
+            </div>
+            <div class="setting-group">
+                <label>Mode trading:</label>
+                <select id="tradeMode">
+                    <option value="live">Live</option>
+                    <option value="test">Test</option>
+                </select>
+            </div>
+            <button onclick="updateConfig()" class="apply-settings">Appliquer les paramètres</button>
+        </div>
     </div>
 
     <div class="section">
@@ -105,7 +178,13 @@
         let config = {
             profitPercent: localStorage.getItem('profit_percent') || 5,
             stopLoss: localStorage.getItem('stop_loss') || 2,
-            minQuantity: localStorage.getItem('min_quantity') || 0.001
+            minQuantity: localStorage.getItem('min_quantity') || 0.001,
+            strategy: localStorage.getItem('strategy') || 'RSI',
+            market: localStorage.getItem('market') || 'all',
+            tradeTime: localStorage.getItem('trade_time') || 5,
+            takeProfit: localStorage.getItem('take_profit') || 10,
+            maxTrades: localStorage.getItem('max_trades') || 3,
+            tradeMode: localStorage.getItem('trade_mode') || 'live'
         };
 
         function notify(msg) {
@@ -128,10 +207,25 @@
             config.profitPercent = parseFloat(document.getElementById('profitPercent').value);
             config.stopLoss = parseFloat(document.getElementById('stopLoss').value);
             config.minQuantity = parseFloat(document.getElementById('minQuantity').value);
+            config.strategy = document.getElementById('strategySelect').value;
+            config.market = document.getElementById('marketSelect').value;
+            config.tradeTime = parseFloat(document.getElementById('tradeTime').value);
+            config.takeProfit = parseFloat(document.getElementById('takeProfit').value);
+            config.maxTrades = parseInt(document.getElementById('maxTrades').value);
+            config.tradeMode = document.getElementById('tradeMode').value;
+
+            // حفظ الإعدادات في localStorage
             localStorage.setItem('profit_percent', config.profitPercent);
             localStorage.setItem('stop_loss', config.stopLoss);
             localStorage.setItem('min_quantity', config.minQuantity);
-            notify('Configuration mise à jour!');
+            localStorage.setItem('strategy', config.strategy);
+            localStorage.setItem('market', config.market);
+            localStorage.setItem('trade_time', config.tradeTime);
+            localStorage.setItem('take_profit', config.takeProfit);
+            localStorage.setItem('max_trades', config.maxTrades);
+            localStorage.setItem('trade_mode', config.tradeMode);
+
+            notify('Paramètres mis à jour avec succès!');
         }
 
         async function buy() {
