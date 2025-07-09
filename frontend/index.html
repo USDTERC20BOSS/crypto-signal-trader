@@ -18,31 +18,40 @@
             border: none;
             color: gold;
             font-size: 16px;
+            width: 100%;
         }
         button {
+            background: #4CAF50;
             cursor: pointer;
-            background: gold;
-            color: black;
-            font-weight: bold;
+        }
+        button:hover {
+            background: #45a049;
         }
         .section {
-            margin-bottom: 20px;
-            border-bottom: 1px solid gold;
-            padding-bottom: 10px;
-        }
-        #notifications {
-            position: fixed;
-            top: 10px;
-            right: 10px;
-            max-width: 300px;
-        }
-        .notification {
-            background: #333;
-            border: 1px solid gold;
-            padding: 10px;
-            margin-bottom: 5px;
+            margin: 20px 0;
+            padding: 15px;
+            background: #222;
             border-radius: 5px;
+        }
+        h1, h2 {
             color: gold;
+            margin: 10px 0;
+        }
+        .rsi-signals {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .signal-item {
+            padding: 10px;
+            margin: 5px 0;
+            background: #333;
+            border-radius: 5px;
+        }
+        .signal-item.success {
+            border-left: 3px solid #4CAF50;
+        }
+        .signal-item.danger {
+            border-left: 3px solid #f44336;
         }
     </style>
 </head>
@@ -61,19 +70,10 @@
         <label>Pourcentage de profit (5-40%):</label><br />
         <input id="profitPercent" type="number" min="5" max="40" value="5" /><br />
         <label>Stop Loss (%):</label><br />
-        <input id="stopLoss" type="number" min="1" max="50" value="5" /><br />
-        <label>Stratégie:</label><br />
-        <select id="strategySelect">
-            <option value="RSI">RSI</option>
-            <option value="MACD">MACD</option>
-            <option value="AI">AI</option>
-        </select><br />
-        <label>Marché:</label><br />
-        <select id="marketSelect">
-            <option value="all">Tous les Pairs</option>
-            <option value="solo">Solo</option>
-        </select><br />
-        <button onclick="updateConfig()">Mettre à jour</button>
+        <input id="stopLoss" type="number" min="0" max="100" value="2" /><br />
+        <label>Quantité minimum:</label><br />
+        <input id="minQuantity" type="number" min="0.001" value="0.001" step="0.001" /><br />
+        <button onclick="updateConfig()">Enregistrer Configuration</button>
     </div>
 
     <div class="section">
@@ -81,16 +81,17 @@
         <label>Pair:</label><br />
         <input id="tradePair" type="text" placeholder="Ex: BTCUSDT" /><br />
         <label>Quantité:</label><br />
-        <input id="tradeQty" type="number" step="0.0001" /><br />
+        <input id="tradeQuantity" type="number" min="0.001" step="0.001" /><br />
         <button onclick="buy()">Acheter</button>
         <button onclick="sell()">Vendre</button>
     </div>
 
     <div class="section">
-        <h2>إشارات RSI الأخيرة <button onclick="checkRecentRSISignals()">تحديث</button></h2>
-        <div id="rsiSignals" style="margin-top: 10px;">
-            <p>جاري تحميل إشارات RSI...</p>
+        <h2>Signaux RSI derniers</h2>
+        <div class="rsi-signals" id="rsiSignals">
+            <p>Chargement des signaux RSI...</p>
         </div>
+        <button onclick="checkRecentRSISignals()">Actualiser</button>
     </div>
 
     <div class="section">
@@ -99,101 +100,113 @@
     </div>
 
     <script>
-        const apiBase = "http://localhost:8000";
+        let apiKey = localStorage.getItem('binance_api_key');
+        let apiSecret = localStorage.getItem('binance_api_secret');
+        let config = {
+            profitPercent: localStorage.getItem('profit_percent') || 5,
+            stopLoss: localStorage.getItem('stop_loss') || 2,
+            minQuantity: localStorage.getItem('min_quantity') || 0.001
+        };
 
         function notify(msg) {
-            const container = document.getElementById("notifications");
-            const div = document.createElement("div");
-            div.className = "notification";
+            const div = document.createElement('div');
+            div.className = 'notification';
             div.textContent = msg;
-            container.appendChild(div);
+            document.getElementById('notifications').prepend(div);
             setTimeout(() => div.remove(), 5000);
         }
 
-        async function saveApi() {
-            const apiKey = document.getElementById("apiKey").value;
-            const apiSecret = document.getElementById("apiSecret").value;
-            const res = await fetch(`${apiBase}/settings/save_api?api_key=${apiKey}&api_secret=${apiSecret}`, {
-                method: "POST"
-            });
-            const data = await res.json();
-            notify(data.message || "Erreur");
+        function saveApi() {
+            apiKey = document.getElementById('apiKey').value;
+            apiSecret = document.getElementById('apiSecret').value;
+            localStorage.setItem('binance_api_key', apiKey);
+            localStorage.setItem('binance_api_secret', apiSecret);
+            notify('API sauvegardé avec succès!');
         }
 
-        async function updateConfig() {
-            const profit = parseFloat(document.getElementById("profitPercent").value);
-            const stop = parseFloat(document.getElementById("stopLoss").value);
-            const strategy = document.getElementById("strategySelect").value;
-            const market = document.getElementById("marketSelect").value;
-            const res = await fetch(`${apiBase}/settings/update_config?profit_percent=${profit}&stop_loss_percent=${stop}&strategy=${strategy}&market=${market}`, {
-                method: "POST"
-            });
-            const data = await res.json();
-            notify(data.message || "Erreur");
+        function updateConfig() {
+            config.profitPercent = parseFloat(document.getElementById('profitPercent').value);
+            config.stopLoss = parseFloat(document.getElementById('stopLoss').value);
+            config.minQuantity = parseFloat(document.getElementById('minQuantity').value);
+            localStorage.setItem('profit_percent', config.profitPercent);
+            localStorage.setItem('stop_loss', config.stopLoss);
+            localStorage.setItem('min_quantity', config.minQuantity);
+            notify('Configuration mise à jour!');
         }
 
         async function buy() {
-            const pair = document.getElementById("tradePair").value;
-            const qty = parseFloat(document.getElementById("tradeQty").value);
-            const res = await fetch(`${apiBase}/trade/buy?pair=${pair}&quantity=${qty}`, {
-                method: "POST"
-            });
-            const data = await res.json();
-            notify(data.message || "Erreur");
+            const pair = document.getElementById('tradePair').value;
+            const quantity = parseFloat(document.getElementById('tradeQuantity').value);
+            try {
+                const response = await fetch('/api/trade/buy', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${apiKey}`
+                    },
+                    body: JSON.stringify({
+                        symbol: pair,
+                        quantity: quantity,
+                        profitPercent: config.profitPercent,
+                        stopLoss: config.stopLoss
+                    })
+                });
+                const data = await response.json();
+                notify(`Achat effectué: ${pair} - ${quantity}`);
+            } catch (error) {
+                notify(`Erreur: ${error.message}`);
+            }
         }
 
         async function sell() {
-            const pair = document.getElementById("tradePair").value;
-            const qty = parseFloat(document.getElementById("tradeQty").value);
-            const res = await fetch(`${apiBase}/trade/sell?pair=${pair}&quantity=${qty}`, {
-                method: "POST"
-            });
-            const data = await res.json();
-            notify(data.message || "Erreur");
+            const pair = document.getElementById('tradePair').value;
+            const quantity = parseFloat(document.getElementById('tradeQuantity').value);
+            try {
+                const response = await fetch('/api/trade/sell', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${apiKey}`
+                    },
+                    body: JSON.stringify({
+                        symbol: pair,
+                        quantity: quantity
+                    })
+                });
+                const data = await response.json();
+                notify(`Vente effectuée: ${pair} - ${quantity}`);
+            } catch (error) {
+                notify(`Erreur: ${error.message}`);
+            }
         }
 
-        // وظائف إضافية لتحليل إشارات RSI
         function formatRSISignal(signal) {
-            const signalType = signal.type === 'buy' ? '🟢 شراء' : '🔴 بيع';
+            const signalClass = signal.action === 'buy' ? 'success' : 'danger';
             return `
-                <div style="margin: 10px 0; padding: 10px; background: #1a1a1a; border-radius: 5px;">
-                    <strong>${signal.pair}</strong>: ${signalType}<br>
-                    <small>${signal.time} (UTC)</small>
+                <div class="signal-item ${signalClass}">
+                    <div>Pair: ${signal.pair}</div>
+                    <div>Action: ${signal.action}</div>
+                    <div>RSI: ${signal.rsi}</div>
+                    <div>Time: ${new Date(signal.timestamp).toLocaleString()}</div>
                 </div>
             `;
         }
 
         async function checkRecentRSISignals() {
-            const rsiContainer = document.getElementById('rsiSignals');
-            rsiContainer.innerHTML = '<p>جاري تحميل إشارات RSI...</p>';
-            
             try {
-                const response = await fetch(`${apiBase}/webhook/recent_rsi_signals`);
+                const response = await fetch('/api/signals/recent');
                 const signals = await response.json();
-                
-                if (signals.length === 0) {
-                    rsiContainer.innerHTML = '<p>لا توجد إشارات RSI في آخر 15 دقيقة</p>';
-                    return;
-                }
-                
-                let html = '<div style="max-height: 300px; overflow-y: auto;">';
-                signals.forEach(signal => {
-                    html += formatRSISignal(signal);
-                });
-                html += '</div>';
-                
-                rsiContainer.innerHTML = html;
-                
+                const signalsContainer = document.getElementById('rsiSignals');
+                signalsContainer.innerHTML = signals.map(formatRSISignal).join('');
             } catch (error) {
-                console.error('خطأ في جلب إشارات RSI:', error);
-                rsiContainer.innerHTML = '<p style="color: red;">حدث خطأ أثناء تحميل إشارات RSI</p>';
+                notify(`Erreur: ${error.message}`);
             }
         }
 
-        // تحميل إشارات RSI عند فتح الصفحة
+        // Chargement des signaux RSI au démarrage
         document.addEventListener('DOMContentLoaded', function() {
             checkRecentRSISignals();
-            // تحديث إشارات RSI كل دقيقة
+            // Actualisation des signaux RSI toutes les minutes
             setInterval(checkRecentRSISignals, 60000);
         });
     </script>

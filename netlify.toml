@@ -7,6 +7,8 @@
   NODE_ENV = "production"
   NODE_VERSION = "18"
   VITE_API_URL = "https://crypto-signal-trader.onrender.com"
+  VITE_BINANCE_API_KEY = ""
+  VITE_BINANCE_API_SECRET = ""
 
 [context.production.deploy-redirects]
   from = "/*"
