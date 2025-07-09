@@ -283,9 +283,101 @@
         }
 
         .loading-spinner {
+            padding: 30px;
+            text-align: center;
+            color: #a0aec0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .loading-spinner .spinner {
+            width: 30px;
+            height: 30px;
+            border: 3px solid rgba(59, 130, 246, 0.3);
+            border-radius: 50%;
+            border-top-color: #3b82f6;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .no-signals {
             padding: 20px;
             text-align: center;
             color: #a0aec0;
+            font-style: italic;
+        }
+
+        .error-message {
+            padding: 20px;
+            background: rgba(239, 68, 68, 0.1);
+            border-left: 4px solid #ef4444;
+            color: #fecaca;
+            margin: 10px;
+            border-radius: 4px;
+        }
+
+        .btn-retry {
+            margin-top: 10px;
+            background: #ef4444;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .btn-retry:hover {
+            background: #dc2626;
+        }
+
+        .signal-pair {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .signal-details {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .signal-type {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .signal-type.buy {
+            background: rgba(16, 185, 129, 0.1);
+            color: #10b981;
+        }
+
+        .signal-type.sell {
+            background: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
+        }
+
+        .signal-type.neutral {
+            background: rgba(156, 163, 175, 0.1);
+            color: #9ca3af;
+        }
+
+        .signal-value {
+            color: #9ca3af;
+            font-size: 14px;
+        }
+
+        .time {
+            font-size: 12px;
+            color: #6b7280;
         }
     </style>
 </head>
@@ -598,13 +690,75 @@
         }
 
         async function checkRecentRSISignals() {
+            const signalsDiv = document.getElementById('rsiSignals');
+            if (!signalsDiv) return;
+            
+            // Afficher un indicateur de chargement
+            signalsDiv.innerHTML = `
+                <div class="loading-spinner">
+                    <div class="spinner"></div>
+                    <div>Chargement des signaux RSI...</div>
+                </div>`;
+            
             try {
-                const response = await fetch('/api/signals/recent');
+                const response = await fetch(`${apiUrl}/rsi-signals`);
+                
+                if (!response.ok) {
+                    throw new Error(`Erreur HTTP: ${response.status}`);
+                }
+                
+                // Vérifier si la réponse est du JSON valide
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    const text = await response.text();
+                    console.error('Réponse non-JSON reçue:', text.substring(0, 200));
+                    throw new Error('Format de réponse inattendu du serveur');
+                }
+                
                 const signals = await response.json();
-                const signalsContainer = document.getElementById('rsiSignals');
-                signalsContainer.innerHTML = signals.map(formatRSISignal).join('');
+                
+                if (!Array.isArray(signals)) {
+                    console.error('Format de données inattendu:', signals);
+                    throw new Error('Format de données incorrect');
+                }
+                
+                if (signals.length === 0) {
+                    signalsDiv.innerHTML = `
+                        <div class="no-signals">
+                            Aucun signal RSI récent trouvé
+                        </div>`;
+                    return;
+                }
+                
+                // Trier les signaux par date (du plus récent au plus ancien)
+                signals.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                
+                // Limiter aux 20 derniers signaux
+                const recentSignals = signals.slice(0, 20);
+                
+                // Générer le HTML des signaux
+                signalsDiv.innerHTML = recentSignals.map(signal => `
+                    <div class="signal-item signal-${signal.signal?.toLowerCase() || 'neutral'}">
+                        <div class="signal-pair">
+                            <span class="symbol">${signal.pair || 'N/A'}</span>
+                            <span class="time">${signal.timestamp ? new Date(signal.timestamp).toLocaleString() : 'Date inconnue'}</span>
+                        </div>
+                        <div class="signal-details">
+                            <span class="signal-type ${signal.signal?.toLowerCase() || 'neutral'}">
+                                ${signal.signal === 'BUY' ? '🟢 ACHAT' : signal.signal === 'SELL' ? '🔴 VENTE' : '⚪ NEUTRE'}
+                            </span>
+                            <span class="signal-value">${signal.value ? `RSI: ${signal.value.toFixed(2)}` : ''}</span>
+                        </div>
+                    </div>
+                `).join('');
+                
             } catch (error) {
-                notify(`Erreur: ${error.message}`);
+                console.error('Erreur lors de la récupération des signaux:', error);
+                signalsDiv.innerHTML = `
+                    <div class="error-message">
+                        ❌ Erreur lors du chargement des signaux: ${error.message}
+                        <button onclick="checkRecentRSISignals()" class="btn-retry">Réessayer</button>
+                    </div>`;
             }
         }
 
